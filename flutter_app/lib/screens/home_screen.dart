@@ -49,10 +49,10 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
     _statsSub = _vpn.statsStream.listen((stats) {
       if (mounted) {
         setState(() {
-          _downloadSpeed = _formatBytes(stats['downloadSpeed'] ?? 0) + '/s';
-          _uploadSpeed = _formatBytes(stats['uploadSpeed'] ?? 0) + '/s';
-          _totalDownload = _formatBytes(stats['totalDownload'] ?? 0);
-          _totalUpload = _formatBytes(stats['totalUpload'] ?? 0);
+          _downloadSpeed = _formatBytes(stats.downloadSpeed) + '/s';
+          _uploadSpeed = _formatBytes(stats.uploadSpeed) + '/s';
+          _totalDownload = _formatBytes(stats.totalDownload);
+          _totalUpload = _formatBytes(stats.totalUpload);
         });
       }
     });
@@ -206,7 +206,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
               
               // Выбор сервера
               _buildServerSelector(),
-              const SizedBox.height ?? const SizedBox(height: 24),
+              const SizedBox(height: 24),
               
               // Информация о подписке
               if (_subscription != null) _buildSubscriptionCard(),
@@ -291,7 +291,7 @@ class _HomeScreenState extends State<HomeScreen> with SingleTickerProviderStateM
             children: [
               Expanded(child: _statItem(Icons.download_done, 'Всего ↓', _totalDownload, AppTheme.textSecondary)),
               Container(width: 1, height: 40, color: AppTheme.bgCardLight),
-              Expanded(child: _statItem(Icons.upload_done, 'Всего ↑', _totalUpload, AppTheme.textSecondary)),
+              Expanded(child: _statItem(Icons.cloud_upload, 'Всего ↑', _totalUpload, AppTheme.textSecondary)),
             ],
           ),
         ],
