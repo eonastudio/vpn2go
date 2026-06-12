@@ -1,0 +1,27 @@
+// VPN2GO — build.gradle additions for sing-box
+// Добавить в android/app/build.gradle
+
+android {
+    // ...
+    
+    // Нужно для libbox
+    packagingOptions {
+        pickFirst '**/libgojni.so'
+    }
+}
+
+dependencies {
+    // sing-box libbox (положить libbox.aar в android/app/libs/)
+    implementation fileTree(dir: 'libs', include: ['*.aar'])
+    
+    // Flutter стандартные зависимости
+    implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk7:$kotlin_version"
+}
+
+// Если libbox требует определённые Android API
+android {
+    defaultConfig {
+        minSdkVersion 24  // sing-box требует минимум Android 7.0
+        // ...
+    }
+}
