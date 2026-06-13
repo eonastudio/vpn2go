@@ -21,12 +21,9 @@ jobs:
           go install github.com/sagernet/gomobile/cmd/gobind@latest
           gomobile init
 
-      - name: Clone sing-box
+      - name: Clone sing-box and build libbox.aar
         run: |
           git clone --depth 1 --branch v1.11.0 https://github.com/sagernet/sing-box.git /tmp/sing-box
-
-      - name: Build libbox.aar
-        run: |
           cd /tmp/sing-box
           mkdir -p "${{ github.workspace }}/flutter_app/android/app/libs"
           gomobile bind \
@@ -63,11 +60,6 @@ jobs:
         with:
           name: libbox-aar
           path: flutter_app/android/app/libs/
-
-      - name: Copy singbox bridge code
-        run: |
-          cp -r singbox-mobile/android/src/main/java/com/vpn2go/singbox \
-                flutter_app/android/app/src/main/java/com/vpn2go/
 
       - name: Install dependencies
         working-directory: flutter_app
