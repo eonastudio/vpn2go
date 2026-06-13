@@ -142,7 +142,7 @@ public class SingBoxVpnService extends VpnService {
         } catch (Exception e) {
             Log.e(TAG, "VPN stop failed", e);
         } finally {
-            stopForeground(STOP_FOREGROUND_REMOVE);
+            stopForeground(true);
             stopSelf();
         }
     }
@@ -158,7 +158,8 @@ public class SingBoxVpnService extends VpnService {
             NotificationChannel channel = new NotificationChannel(
                 CHANNEL_ID, "VPN2GO Connection", NotificationManager.IMPORTANCE_LOW);
             channel.setDescription("VPN connection status");
-            getSystemService(NotificationManager.class).createNotificationChannel(channel);
+            NotificationManager manager = (NotificationManager) getSystemService(Context.NOTIFICATION_SERVICE);
+            manager.createNotificationChannel(channel);
         }
     }
 
