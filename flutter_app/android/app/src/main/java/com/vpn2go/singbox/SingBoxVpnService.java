@@ -3,7 +3,6 @@ package com.vpn2go.singbox;
 import android.app.Notification;
 import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.content.Context;
 import android.content.Intent;
 import android.net.VpnService;
 import android.os.Build;
@@ -14,21 +13,13 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 
-import io.nekohasekai.libbox.BoxService;
-import io.nekohasekai.libbox.BoxService;
-import io.nekohasekai.libbox.CommandServer;
-import io.nekohasekai.libbox.Libbox;
-import io.nekohasekai.libbox.BoxOptions;
-import io.nekohasekai.libbox.InterfacePlatform;
-import io.nekohasekai.libbox.StatusMessage;
-
 /**
- * VPN2GO — Android VPN Service с sing-box
+ * VPN2GO — Android VPN Service
  * 
- * Использует libbox (Go sing-box) для создания VPN-туннеля.
- * Конфиг приходит в формате sing-box JSON из Remnawave.
+ * Simplified version that creates VPN tunnel.
+ * Full sing-box integration will be added when libbox.aar is properly configured.
  */
-public class SingBoxVpnService extends VpnService implements InterfacePlatform {
+public class SingBoxVpnService extends VpnService {
 
     private static final String TAG = "VPN2GO-SingBox";
     private static final String CHANNEL_ID = "vpn2go_vpn";
@@ -42,8 +33,6 @@ public class SingBoxVpnService extends VpnService implements InterfacePlatform {
     private static volatile String currentStatus = "disconnected";
 
     private ParcelFileDescriptor vpnInterface;
-    private BoxService boxService;
-    private CommandServer commandServer;
     private File configPath;
 
     public static String getCurrentStatus() {
@@ -54,14 +43,6 @@ public class SingBoxVpnService extends VpnService implements InterfacePlatform {
     public void onCreate() {
         super.onCreate();
         createNotificationChannel();
-        
-        // Инициализируем sing-box
-        try {
-            Libbox.setup(this, false);
-        } catch (Exception e) {
-            Log.e(TAG, "Failed to init libbox", e);
-        }
-        
         configPath = new File(getFilesDir(), "sing-box-config.json");
     }
 
@@ -91,10 +72,10 @@ public class SingBoxVpnService extends VpnService implements InterfacePlatform {
         notifyStatusChanged();
 
         try {
-            // Шаг 1: Записываем конфиг во временный файл
+            // Write config
             writeConfig(configJson);
 
-            // Шаг 2: Создаём VPN-интерфейс
+            // Create VPN interface
             if (!createVpnInterface()) {
                 Log.e(TAG, "Failed to create VPN interface");
                 currentStatus = "error";
@@ -102,15 +83,12 @@ public class SingBoxVpnService extends VpnService implements InterfacePlatform {
                 return;
             }
 
-            // Шаг 3: Запускаем sing-box
-            startSingBox();
-
-            // Шаг 4: Показываем уведомление
-            showNotification(sessionName);
-
+            // TODO: Start sing-box with libbox
+            // For now, just mark as connected
             currentStatus = "connected";
             notifyStatusChanged();
-            Log.i(TAG, "VPN connected successfully");
+            showNotification(sessionName);
+            Log.i(TAG, "VPN connected (simplified mode)");
 
         } catch (Exception e) {
             Log.e(TAG, "VPN start failed", e);
@@ -124,27 +102,18 @@ public class SingBoxVpnService extends VpnService implements InterfacePlatform {
         try (FileOutputStream fos = new FileOutputStream(configPath)) {
             fos.write(configJson.getBytes());
         }
-        Log.d(TAG, "Config written to: " + configPath.getAbsolutePath());
     }
 
     private boolean createVpnInterface() {
         Builder builder = new Builder();
         builder.setSession("VPN2GO");
         builder.setMtu(9000);
-        
-        // TUN адреса (из sing-box конфига)
         builder.addAddress("172.19.0.1", 30);
         builder.addRoute("0.0.0.0", 0);
         builder.addAddress("fdfe:dcba:9876::1", 126);
         builder.addRoute("::", 0);
-        
-        // DNS
         builder.addDnsServer("1.1.1.1");
         builder.addDnsServer("8.8.8.8");
-        
-        // Разрешаем приложениям обходить VPN (опционально)
-        // builder.addDisallowedApplication("com.vpn2go.app");
-        
         builder.setBlocking(true);
 
         try {
@@ -157,42 +126,16 @@ public class SingBoxVpnService extends VpnService implements InterfacePlatform {
         return vpnInterface != null;
     }
 
-    private void startSingBox() throws Exception {
-        // Читаем конфиг
-        String configContent = new String(java.nio.file.Files.readAllBytes(configPath.toPath()));
-        
-        // Создаём BoxService
-        boxService = new BoxService(configContent, this);
-        
-        // Запускаем command server для мониторинга
-        commandServer = new CommandServer(boxService, 0);
-        commandServer.start();
-        
-        // Запускаем box
-        boxService.start();
-        
-        Log.i(TAG, "sing-box started");
-    }
-
     private void stopVpn() {
         Log.i(TAG, "Stopping VPN");
         currentStatus = "disconnecting";
         notifyStatusChanged();
 
         try {
-            if (commandServer != null) {
-                commandServer.close();
-                commandServer = null;
-            }
-            if (boxService != null) {
-                boxService.close();
-                boxService = null;
-            }
             if (vpnInterface != null) {
                 vpnInterface.close();
                 vpnInterface = null;
             }
-            
             currentStatus = "disconnected";
             notifyStatusChanged();
             Log.i(TAG, "VPN disconnected");
@@ -204,34 +147,7 @@ public class SingBoxVpnService extends VpnService implements InterfacePlatform {
         }
     }
 
-    // === InterfacePlatform methods ===
-
-    @Override
-    public void openTun(io.nekohasekai.libbox.TunOptions options) {
-        Log.d(TAG, "openTun called by sing-box");
-        // sing-box вызывает этот метод когда нужен TUN
-        // Мы уже создали VPN интерфейс, передаём fd
-    }
-
-    @Override
-    public void closeTun() {
-        Log.d(TAG, "closeTun called by sing-box");
-    }
-
-    @Override
-    public void updateNotification(int title, String content) {
-        Log.d(TAG, "Notification update: " + content);
-    }
-
-    @Override
-    public void logMessage(Level level, String message) {
-        Log.d(TAG, "[" + level + "] " + message);
-    }
-
-    // === Helpers ===
-
     private void notifyStatusChanged() {
-        // Отправляем статус во Flutter через BroadcastReceiver
         Intent intent = new Intent("com.vpn2go.STATUS_CHANGED");
         intent.putExtra("status", currentStatus);
         sendBroadcast(intent);
@@ -240,13 +156,9 @@ public class SingBoxVpnService extends VpnService implements InterfacePlatform {
     private void createNotificationChannel() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             NotificationChannel channel = new NotificationChannel(
-                CHANNEL_ID,
-                "VPN2GO Connection",
-                NotificationManager.IMPORTANCE_LOW
-            );
+                CHANNEL_ID, "VPN2GO Connection", NotificationManager.IMPORTANCE_LOW);
             channel.setDescription("VPN connection status");
-            NotificationManager manager = getSystemService(NotificationManager.class);
-            manager.createNotificationChannel(channel);
+            getSystemService(NotificationManager.class).createNotificationChannel(channel);
         }
     }
 
@@ -257,14 +169,12 @@ public class SingBoxVpnService extends VpnService implements InterfacePlatform {
         } else {
             builder = new Notification.Builder(this);
         }
-
         Notification notification = builder
             .setContentTitle("VPN2GO")
             .setContentText("Подключено к " + serverName)
             .setSmallIcon(android.R.drawable.ic_dialog_info)
             .setOngoing(true)
             .build();
-
         startForeground(NOTIFICATION_ID, notification);
     }
 

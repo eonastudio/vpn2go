@@ -8,17 +8,12 @@ import android.content.IntentFilter;
 import android.net.VpnService;
 import android.os.Build;
 
-import androidx.annotation.NonNull;
-
 import io.flutter.embedding.engine.FlutterEngine;
 import io.flutter.plugin.common.EventChannel;
 import io.flutter.plugin.common.MethodChannel;
 
 /**
- * VPN2GO — Flutter ↔ Android bridge для sing-box
- * 
- * MethodChannel: Flutter → Android (connect, disconnect, getStatus)
- * EventChannel: Android → Flutter (status changes, stats)
+ * VPN2GO — Flutter ↔ Android bridge
  */
 public class SingBoxBridge {
 
@@ -39,11 +34,8 @@ public class SingBoxBridge {
     }
 
     public void configure(FlutterEngine flutterEngine) {
-        // Method Channel: Flutter → Native
         methodChannel = new MethodChannel(
-            flutterEngine.getDartExecutor().getBinaryMessenger(),
-            METHOD_CHANNEL
-        );
+            flutterEngine.getDartExecutor().getBinaryMessenger(), METHOD_CHANNEL);
 
         methodChannel.setMethodCallHandler((call, result) -> {
             switch (call.method) {
@@ -52,19 +44,15 @@ public class SingBoxBridge {
                     String sessionName = call.argument("sessionName");
                     connect(config, sessionName, result);
                     break;
-
                 case "disconnect":
                     disconnect(result);
                     break;
-
                 case "getStatus":
                     result.success(SingBoxVpnService.getCurrentStatus());
                     break;
-
                 case "getHwid":
                     result.success(HwidGenerator.generate(activity));
                     break;
-
                 case "getDeviceInfo":
                     String[] info = HwidGenerator.getDeviceInfo(activity);
                     java.util.Map<String, String> deviceMap = new java.util.HashMap<>();
@@ -75,18 +63,14 @@ public class SingBoxBridge {
                     deviceMap.put("sdkVersion", info[4]);
                     result.success(deviceMap);
                     break;
-
                 default:
                     result.notImplemented();
                     break;
             }
         });
 
-        // Event Channel: Native → Flutter
         eventChannel = new EventChannel(
-            flutterEngine.getDartExecutor().getBinaryMessenger(),
-            EVENT_CHANNEL
-        );
+            flutterEngine.getDartExecutor().getBinaryMessenger(), EVENT_CHANNEL);
 
         eventChannel.setStreamHandler(new EventChannel.StreamHandler() {
             @Override
@@ -94,7 +78,6 @@ public class SingBoxBridge {
                 eventSink = events;
                 registerStatusReceiver();
             }
-
             @Override
             public void onCancel(Object arguments) {
                 eventSink = null;
@@ -104,18 +87,14 @@ public class SingBoxBridge {
     }
 
     private void connect(String config, String sessionName, MethodChannel.Result result) {
-        // Проверяем VPN-разрешение
         Intent vpnIntent = VpnService.prepare(activity);
         if (vpnIntent != null) {
-            // Нужно разрешение — сохраняем и запрашиваем
             pendingConfig = config;
             pendingSessionName = sessionName;
             activity.startActivityForResult(vpnIntent, 1001);
             result.success("permission_required");
             return;
         }
-
-        // Разрешение есть — запускаем
         startVpnService(config, sessionName);
         result.success(true);
     }
@@ -132,7 +111,6 @@ public class SingBoxBridge {
         intent.setAction(SingBoxVpnService.ACTION_CONNECT);
         intent.putExtra(SingBoxVpnService.EXTRA_CONFIG, config);
         intent.putExtra(SingBoxVpnService.EXTRA_SESSION_NAME, sessionName);
-        
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
             activity.startForegroundService(intent);
         } else {
@@ -140,9 +118,6 @@ public class SingBoxBridge {
         }
     }
 
-    /**
-     * Вызывать из Activity.onActivityResult для обработки VPN-разрешения
-     */
     public void onActivityResult(int requestCode, int resultCode) {
         if (requestCode == 1001 && resultCode == Activity.RESULT_OK) {
             if (pendingConfig != null) {
@@ -163,7 +138,6 @@ public class SingBoxBridge {
                 }
             }
         };
-
         IntentFilter filter = new IntentFilter("com.vpn2go.STATUS_CHANGED");
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
             activity.registerReceiver(statusReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
@@ -174,9 +148,7 @@ public class SingBoxBridge {
 
     private void unregisterStatusReceiver() {
         if (statusReceiver != null) {
-            try {
-                activity.unregisterReceiver(statusReceiver);
-            } catch (Exception ignored) {}
+            try { activity.unregisterReceiver(statusReceiver); } catch (Exception ignored) {}
             statusReceiver = null;
         }
     }
