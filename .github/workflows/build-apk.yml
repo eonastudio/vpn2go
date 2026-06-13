@@ -28,9 +28,16 @@ jobs:
         run: |
           git clone --depth 1 --branch v1.11.0 https://github.com/sagernet/sing-box.git /tmp/sing-box
 
+      - name: Add mobile dependency
+        run: |
+          cd /tmp/sing-box
+          go get golang.org/x/mobile
+          go mod tidy
+
       - name: Build libbox.aar
         run: |
           cd /tmp/sing-box
+          mkdir -p $GITHUB/workspace/flutter_app/android/app/libs
           ANDROID_HOME=$ANDROID_HOME gomobile bind \
             -target=android \
             -androidapi=24 \
