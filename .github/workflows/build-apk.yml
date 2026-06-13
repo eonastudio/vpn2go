@@ -15,25 +15,24 @@ jobs:
         with:
           go-version: '1.22'
 
-      - name: Install Android NDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install gomobile
+      - name: Install gomobile (sagernet fork)
         run: |
-          go install golang.org/x/mobile/cmd/gomobile@latest
-          go install golang.org/x/mobile/cmd/gobind@latest
+          go install github.com/sagernet/gomobile/cmd/gomobile@latest
+          go install github.com/sagernet/gomobile/cmd/gobind@latest
           gomobile init
 
-      - name: Clone sing-box and build libbox.aar
+      - name: Clone sing-box
         run: |
           git clone --depth 1 --branch v1.11.0 https://github.com/sagernet/sing-box.git /tmp/sing-box
+
+      - name: Build libbox.aar
+        run: |
           cd /tmp/sing-box
-          go get golang.org/x/mobile
-          go mod tidy
           mkdir -p "${{ github.workspace }}/flutter_app/android/app/libs"
           gomobile bind \
             -target=android \
             -androidapi=24 \
+            -javapkg=io.nekohasekai \
             -o "${{ github.workspace }}/flutter_app/android/app/libs/libbox.aar" \
             ./experimental/libbox
 
